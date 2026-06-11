@@ -3,10 +3,6 @@
 > 무게 잡지 않는 다정한 견습 도사 **삼신이**가, 네 사주 보따리를 펼쳐 다정히 읽어주는 Claude 플러그인.
 > 운세로 겁주는 게 아니라, 오늘 하루 어깨를 토닥여주는 친구. ✨
 
-<!-- 스크린샷 자리표시자 -->
-<!-- TODO: 대표 스크린샷 삽입 (예: docs/screenshots/hero.png) -->
-![삼신이 대표 화면 (스크린샷 자리표시자)](docs/screenshots/hero.png)
-
 ---
 
 ## 삼신이가 누구냐면
@@ -50,7 +46,7 @@
 본격적으로 설치하기 전에 아래 세 가지만 확인해 주세요.
 
 - **실행 환경** — 삼신이는 **윈도우(및 맥) Claude 데스크톱 앱**에서 설치해 씁니다. 플러그인은 Claude 유료 플랜(Pro·Max·Team·Enterprise)에서 사용할 수 있어요. 플러그인이 번들한 스킬은 웹 채팅·데스크톱 앱 Chat 탭·Cowork에서 모두 쓸 수 있고, 일부 기능(서브에이전트·훅)은 **Cowork에서만** 동작합니다. 삼신이를 Cowork에서 쓰려면 Cowork 사용이 켜져 있어야 합니다.
-- **공개 레포** — 삼신이는 **GitHub 공개 레포**로 배포됩니다. 아래 절차의 `<GitHub사용자명>` 자리에는 이 레포가 올라간 실제 계정명을 넣게 됩니다. (레포가 공개(Public) 상태여야 마켓플레이스 동기화가 됩니다 — 비공개면 추가 단계에서 막혀요.)
+- **공개 레포** — 삼신이는 **GitHub 공개 레포**로 배포됩니다.
 - **만세력 엔진(Python)** — 풀이의 1층 엔진은 Python을 씁니다. `lunar_python` 패키지가 없으면 엔진이 자동 설치를 시도하고, 그래도 안 되면 삼신이가 설치 방법을 안내해 줍니다.
 
 ---
@@ -69,12 +65,11 @@
 4. **"Add from a repository(레포지토리에서 추가)"** 를 골라 GitHub 공개 레포를 동기화합니다. 레포 주소는 아래 형태예요.
 
 ```
-https://github.com/<GitHub사용자명>/samsin-saju-marketplace
+https://github.com/davidchoi0313/samsin-saju
 ```
 
-`<GitHub사용자명>` 자리에는 이 레포가 올라간 실제 GitHub 계정명을 넣어 주세요. 이렇게 하면 삼신이 플러그인이 들어 있는 **마켓플레이스(보따리 가게)가 내 데스크톱 앱에 등록**됩니다.
+`이렇게 하면 삼신이 플러그인이 들어 있는 **마켓플레이스(보따리 가게)가 내 데스크톱 앱에 등록**됩니다.
 
-> 입력 칸이 전체 URL을 받는지, `<GitHub사용자명>/samsin-saju-marketplace` 같은 짧은 형태를 받는지는 앱 화면 안내에 따릅니다. 전체 URL이 안 되면 짧은 형태로, 그 반대도 한 번씩 시도해 보세요. (어느 쪽이든 가리키는 레포는 같습니다.)
 
 ### (b) 플러그인 설치 — 삼신이를 내 보따리로 데려오기
 
@@ -98,8 +93,8 @@ https://github.com/<GitHub사용자명>/samsin-saju-marketplace
 데스크톱 앱이 아니라 터미널 **Claude Code**를 쓰는 개발자라면, 슬래시 명령으로도 설치할 수 있습니다. (일반 사용자는 위 데스크톱 앱 절차만 따르면 됩니다.)
 
 ```
-/plugin marketplace add <GitHub사용자명>/samsin-saju-marketplace
-/plugin install samsin-saju@samsin-saju-marketplace
+/plugin marketplace add davidchoi0313/samsin-saju
+/plugin install samsin-saju@samsin-saju
 ```
 
 설치 확인은 `/plugin` 목록에서 `samsin-saju` 가 보이는지로 합니다.
@@ -181,14 +176,6 @@ A. 같은 생년월일·생시·성별·음양력을 넣었다면 엔진 산출(
 
 ---
 
-## 스크린샷
-
-<!-- TODO: 아래 자리표시자에 실제 이미지 교체 -->
-| 평생사주 | 올해운세 | 궁합 |
-|---|---|---|
-| ![평생사주 (자리표시자)](docs/screenshots/menu-01.png) | ![올해운세 (자리표시자)](docs/screenshots/menu-02.png) | ![궁합 (자리표시자)](docs/screenshots/menu-03.png) |
-
----
 
 ## ⚠️ 꼭 읽어주세요 — 오락·참고용 안내
 
