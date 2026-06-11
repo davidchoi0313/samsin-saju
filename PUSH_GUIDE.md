@@ -89,13 +89,21 @@ claude plugin validate .
 
 ## 5단계 — 마켓플레이스 추가 & 설치 검증 (실제 동작 확인 단계)
 
-Claude Code 세션에서 아래를 실행합니다.
+> 최종 사용자는 **윈도우(및 맥) Claude 데스크톱 앱**에서 설치합니다. 따라서 "설치 가능" 검증은 데스크톱 앱 기준(아래 A)으로 하는 것을 우선합니다. 터미널 Claude Code를 쓰는 개발자는 보조로 B를 써도 됩니다. (두 경로가 가리키는 레포는 같습니다.)
+
+### A) 데스크톱 앱 GUI로 검증 (사용자 경로 — 우선)
+
+1. 데스크톱 앱 왼쪽 사이드바 **Customize → Plugins** 탭으로 이동. (Cowork에서 검증할 거면 먼저 **Cowork** 탭을 연 뒤 Customize.)
+2. **Personal plugins** 섹션의 **`+` → "Add marketplace" → "Add from a repository"** 로 `https://github.com/<GitHub사용자명>/samsin-saju-marketplace` 를 동기화.
+3. **"Browse plugins"** 에서 `samsin-saju` 를 찾아 **"Install"**.
+4. Cowork(또는 Chat) 대화창에 **"사주 봐줘"** 입력 → 삼신이가 응답.
+
+> 앱 메뉴 명칭·입력 형식(전체 URL ↔ 짧은 형태)은 앱 버전·언어에 따라 다를 수 있습니다. 화면 안내를 따르세요. (위 메뉴 경로는 Claude 공식 Help Center "Use plugins in Claude" 기준.)
+
+### B) 터미널 Claude Code로 검증 (개발자 보조)
 
 ```
 /plugin marketplace add <GitHub사용자명>/samsin-saju-marketplace
-```
-
-```
 /plugin install samsin-saju@samsin-saju-marketplace
 ```
 
@@ -103,17 +111,16 @@ Claude Code 세션에서 아래를 실행합니다.
 
 아래가 모두 확인되어야 "설치 가능"이 검증된 것입니다. (하나라도 안 되면 6단계 참고)
 
-1. `/plugin marketplace add` 실행 후 마켓플레이스가 목록에 뜬다.
-   - 확인: `claude plugin marketplace list`
-2. `/plugin install` 후 오류 없이 설치 완료 메시지가 뜬다.
-3. 새 세션에서 **"사주 봐줘"** 라고 입력하면 삼신이가 응답한다.
+1. 마켓플레이스 추가 후 목록에 뜬다. (데스크톱: Customize → Plugins 목록 / 터미널: `claude plugin marketplace list`)
+2. 설치 후 오류 없이 설치 완료 상태가 된다. (데스크톱: 목록에 enabled / 터미널: 설치 완료 메시지)
+3. **"사주 봐줘"** 라고 입력하면 삼신이가 응답한다. (데스크톱: Cowork·Chat 대화창)
 4. (Python) 만세력 엔진이 동작한다. `lunar_python` 미설치 시 자동 설치 안내가 뜨는지 확인.
 
 ---
 
 ## 6단계 — 잘 안 될 때
 
-- **상대경로(`./plugins/...`)가 안 풀림** → 마켓플레이스를 **URL이 아니라 GitHub 레포(Git)** 로 추가했는지 확인하세요. URL 직접 추가 방식은 `marketplace.json` 만 받아오므로 상대경로가 풀리지 않습니다. `/plugin marketplace add <사용자명>/<레포명>` 형식(Git)을 쓰세요.
+- **상대경로(`./plugins/...`)가 안 풀림** → 마켓플레이스를 **GitHub 레포(Git 동기화)** 로 추가했는지 확인하세요. 데스크톱 앱에서는 **"Add from a repository"** 로 추가하면 됩니다. (단순 파일 URL만 받아오는 방식은 `marketplace.json` 만 가져와 상대경로가 풀리지 않습니다.) 터미널이라면 `/plugin marketplace add <사용자명>/<레포명>` 형식(Git)을 쓰세요.
 - **레포가 private 이라 설치 실패** → 레포를 **Public** 으로 전환하거나, 인증 토큰(`GITHUB_TOKEN`)을 설정하세요.
 - **마켓플레이스 이름 충돌** → 같은 이름의 마켓플레이스가 이미 있으면 덮어씁니다. `claude plugin marketplace remove samsin-saju-marketplace` 후 다시 추가.
 - **변경 후 반영 안 됨** → 커밋·푸시 후 `/plugin marketplace update samsin-saju-marketplace` 로 갱신.
