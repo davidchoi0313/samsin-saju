@@ -1,0 +1,182 @@
+<!--
+  삼신이 입력 폼 템플릿 (input-form.html)
+
+  성격: 삼신이(saju-reading)가 사주풀이 입력 단계에서 mcp__visualize__show_widget로
+        즉석 렌더하는 표준 입력 폼의 참조 골격이다. SKILL.md §2가 이 파일을 근거로
+        폼을 띄운다. 이 파일은 "박제된 표준"이며, 삼신이는 이 골격을 그대로 렌더한다.
+
+  거버넌스 정합(불변):
+  - 이 폼은 편의 제공일 뿐, 사주 사실 근거가 아니다(§0 엔진 우선). 제출값은 그대로
+    엔진 인자·mbti_profile로 흐를 뿐, 폼 자체가 사주를 만들지 않는다.
+  - 성향(내부 MBTI)은 입력 단계에서만 16유형 코드 노출이 허용된다(사용자가 자기 유형을
+    고르는 자리라 필요). 단 이 값은 내부 mbti_profile로만 흐르고, 결과 풀이 출력은
+    여전히 '성향' 언어로만 전한다(mbti-layer.md 가드5·표현 전환 불변).
+  - "몰라요"/미선택 → mbti_profile.provided=false (강등·오염 0). 성향 미제공 경로는
+    기존 풀이 그대로.
+
+  show_widget 규약 정합:
+  - 색은 전부 CSS 변수(var(--text-primary) 등). 하드코딩 색 없음 → 다크모드 자동 안전.
+  - 외곽 컨테이너 배경 없음(호스트가 배경 제공). position:fixed 없음.
+  - 브라우저 스토리지(localStorage/sessionStorage) 미사용 — 세션 내 값만.
+  - 제출은 sendPrompt(text)로 삼신이에게 값을 되돌린다(삼신이가 이어서 파싱).
+
+  키(대비·상태): 라벨-입력 대비 var 토큰 사용, 각 컨트롤 focus 링 내장(pre-styled),
+  선택된 pill은 aria-pressed=true + 시각 강조. 키보드: 모든 pill은 <button>이라 Tab 도달.
+-->
+<h2 class="sr-only">삼신이 사주풀이 입력 폼 — 성별, 음양력, 생년월일, 태어난 시, 이름, 성향을 고르고 보따리 펼치기를 누르면 삼신이가 풀이를 시작한다.</h2>
+
+<style>
+  .samsin-form { max-width: 560px; margin: 0 auto; padding: 1rem 0; font-size: 15px; line-height: 1.7; }
+  .samsin-form .grp { margin: 0 0 1.25rem; }
+  .samsin-form .lead { color: var(--text-secondary); font-size: 14px; margin: 0 0 8px; }
+  .samsin-form .req { color: var(--text-accent); font-size: 12px; }
+  .samsin-form .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .samsin-form .pill { padding: 7px 14px; border: 0.5px solid var(--border-strong); border-radius: 999px; background: var(--surface-2); color: var(--text-primary); font-size: 14px; cursor: pointer; }
+  .samsin-form .pill:hover { background: var(--surface-1); }
+  .samsin-form .pill[aria-pressed="true"] { border: 0.5px solid var(--border-accent); background: var(--bg-accent); color: var(--text-accent); }
+  .samsin-form .mbti-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .samsin-form .mbti-grid .pill { text-align: center; padding: 8px 4px; }
+  .samsin-form .dunno { margin-top: 8px; }
+  .samsin-form input[type="text"], .samsin-form input[type="date"] { width: 100%; }
+  .samsin-form .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1.5rem; }
+  .samsin-form .go { border: 0.5px solid var(--border-accent); background: var(--bg-accent); color: var(--text-accent); }
+  .samsin-form .hint { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
+</style>
+
+<div class="samsin-form">
+  <div class="grp">
+    <p class="lead">우리 아가, 사내아이냐 계집아이냐? <span class="req">꼭 있어야 큰 흐름을 짚는단다</span></p>
+    <div class="pills" role="group" aria-label="성별">
+      <button type="button" class="pill" data-field="gender" data-value="male">남자</button>
+      <button type="button" class="pill" data-field="gender" data-value="female">여자</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <p class="lead">양력으로 아니, 음력으로 아니? <span class="req">필수</span></p>
+    <div class="pills" role="group" aria-label="음양력">
+      <button type="button" class="pill" data-field="calendar" data-value="solar">양력</button>
+      <button type="button" class="pill" data-field="calendar" data-value="lunar">음력(평달)</button>
+      <button type="button" class="pill" data-field="calendar" data-value="lunar-leap">음력(윤달)</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <p class="lead">언제 세상에 왔니? 생년월일을 짚어주렴 <span class="req">필수</span></p>
+    <input type="date" id="birthDate" aria-label="생년월일" />
+  </div>
+
+  <div class="grp">
+    <p class="lead">몇 시쯤 세상 빛을 봤니? 기억나는 대로 고르렴 (몰라도 괜찮단다)</p>
+    <div class="pills" role="group" aria-label="태어난 시">
+      <button type="button" class="pill" data-field="time" data-value="ja">자시 (밤 11시 반~새벽 1시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="chuk">축시 (1시 반~3시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="in">인시 (3시 반~5시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="mau">묘시 (5시 반~7시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="jin">진시 (7시 반~9시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="sa">사시 (9시 반~11시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="o">오시 (11시 반~오후 1시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="mi">미시 (오후 1시 반~3시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="sin">신시 (3시 반~5시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="yu">유시 (5시 반~7시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="sul">술시 (7시 반~9시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="hae">해시 (9시 반~밤 11시 반)</button>
+      <button type="button" class="pill" data-field="time" data-value="unknown">시 모름</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <p class="lead">이름은 무어라 부르면 좋겠니? (말하기 싫으면 그냥 '아가'라 부르마)</p>
+    <input type="text" id="name" placeholder="영희" aria-label="이름 (선택)" />
+  </div>
+
+  <div class="grp">
+    <p class="lead">혹시 네 성향, 스스로 아는 게 있니? 아래에서 골라도 되고, 몰라도 괜찮단다 (선택)</p>
+    <div class="mbti-grid" role="group" aria-label="성향 선택">
+      <button type="button" class="pill" data-field="mbti" data-value="ISTJ">ISTJ</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ISFJ">ISFJ</button>
+      <button type="button" class="pill" data-field="mbti" data-value="INFJ">INFJ</button>
+      <button type="button" class="pill" data-field="mbti" data-value="INTJ">INTJ</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ISTP">ISTP</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ISFP">ISFP</button>
+      <button type="button" class="pill" data-field="mbti" data-value="INFP">INFP</button>
+      <button type="button" class="pill" data-field="mbti" data-value="INTP">INTP</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ESTP">ESTP</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ESFP">ESFP</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ENFP">ENFP</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ENTP">ENTP</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ESTJ">ESTJ</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ESFJ">ESFJ</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ENFJ">ENFJ</button>
+      <button type="button" class="pill" data-field="mbti" data-value="ENTJ">ENTJ</button>
+    </div>
+    <div class="dunno pills" role="group" aria-label="성향 모름">
+      <button type="button" class="pill" data-field="mbti" data-value="unknown">몰라요 / 모름</button>
+    </div>
+    <p class="hint">성향은 삼신이가 조언을 좀 더 네 결에 맞춰 전하려는 참고일 뿐, 사주 풀이 자체는 넣든 안 넣든 똑같이 펼쳐진단다.</p>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="pill" id="talk">그냥 말로 할게</button>
+    <button type="button" class="pill go" id="submit">보따리 펼치기</button>
+  </div>
+  <p class="hint" id="warn" style="color: var(--text-danger); display: none;"></p>
+</div>
+
+<script>
+  (function () {
+    var state = { gender: null, calendar: null, time: null, mbti: null };
+    var groups = { gender: true, calendar: true, time: true, mbti: true };
+
+    document.querySelectorAll('.samsin-form .pill[data-field]').forEach(function (btn) {
+      btn.setAttribute('aria-pressed', 'false');
+      btn.addEventListener('click', function () {
+        var f = btn.dataset.field;
+        var already = state[f] === btn.dataset.value;
+        document.querySelectorAll('.samsin-form .pill[data-field="' + f + '"]').forEach(function (b) {
+          b.setAttribute('aria-pressed', 'false');
+        });
+        if (already) { state[f] = null; }
+        else { state[f] = btn.dataset.value; btn.setAttribute('aria-pressed', 'true'); }
+      });
+    });
+
+    document.getElementById('talk').addEventListener('click', function () {
+      sendPrompt('그냥 말로 할게');
+    });
+
+    document.getElementById('submit').addEventListener('click', function () {
+      var warn = document.getElementById('warn');
+      var date = document.getElementById('birthDate').value;
+      var missing = [];
+      if (!state.gender) missing.push('성별');
+      if (!state.calendar) missing.push('양력·음력');
+      if (!date) missing.push('생년월일');
+      if (missing.length) {
+        warn.textContent = '아직 ' + missing.join(', ') + '은(는) 안 골랐구나. 그것만 짚어주면 바로 펼쳐주마.';
+        warn.style.display = 'block';
+        return;
+      }
+      warn.style.display = 'none';
+      var name = document.getElementById('name').value.trim();
+      var timeLabel = state.time
+        ? (state.time === 'unknown' ? '시 모름' : state.time)
+        : '시 모름';
+      var lines = [];
+      lines.push('보따리 펼치기 — 입력 폼으로 골랐단다.');
+      lines.push('- 성별: ' + (state.gender === 'male' ? '남자' : '여자'));
+      var calLabel = state.calendar === 'solar' ? '양력'
+        : state.calendar === 'lunar' ? '음력(평달)' : '음력(윤달)';
+      lines.push('- 음양력: ' + calLabel);
+      lines.push('- 생년월일: ' + date);
+      lines.push('- 태어난 시: ' + timeLabel);
+      if (name) lines.push('- 이름: ' + name);
+      if (state.mbti && state.mbti !== 'unknown') {
+        lines.push('- 성향(자기신고): ' + state.mbti);
+      } else {
+        lines.push('- 성향: 모름(안 넣음)');
+      }
+      sendPrompt(lines.join('\n'));
+    });
+  })();
+</script>
