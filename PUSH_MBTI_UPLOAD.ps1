@@ -1,11 +1,11 @@
 ﻿# =====================================================================
-#  PUSH_MBTI_업로드.ps1
+#  PUSH_MBTI_UPLOAD.ps1
 #  삼신이 사주 레포 -> GitHub 업로드 도우미 (MBTI 프로토타입 반영)
 #
 #  대상 원격: https://github.com/davidchoi0313/samsin-saju.git
 #
 #  [사용법] Windows PowerShell 창에서 이 파일이 있는 폴더로 이동한 뒤
-#     powershell -ExecutionPolicy Bypass -File .\PUSH_MBTI_업로드.ps1
+#     powershell -ExecutionPolicy Bypass -File .\PUSH_MBTI_UPLOAD.ps1
 #  또는 파일 우클릭 후 "PowerShell에서 실행".
 #
 #  [안전 설계]

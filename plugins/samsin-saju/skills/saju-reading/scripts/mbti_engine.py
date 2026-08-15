@@ -3,7 +3,7 @@
 """
 mbti_engine.py — 삼신이(samsin) 결정론 성향 엔진
 
-설계서 docs/성향엔진-설계.md 구현. 만세력 엔진(saju_engine.py)과 나란히 놓이는
+설계서 docs/personality-engine-design.md 구현. 만세력 엔진(saju_engine.py)과 나란히 놓이는
 두 번째 결정론 모듈. 만세력이 `생년월일시·성별 → (규칙) → 사주 카드`를 LLM 개입
 0으로 고정하듯, 성향 엔진은 `유형/문항 입력 → (규칙) → 성향 카드`를 LLM 개입 0으로
 고정한다.

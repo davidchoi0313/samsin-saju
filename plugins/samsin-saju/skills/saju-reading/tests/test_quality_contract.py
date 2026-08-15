@@ -162,7 +162,7 @@ class TestPromptRegressionDetection(PromptContractTestCase):
     def test_openai_and_claude_manifest_versions_must_match(self):
         self.rewrite_path(
             self.plugin_root / ".codex-plugin" / "plugin.json",
-            lambda text: text.replace('"version": "0.7.0"', '"version": "0.7.1"', 1),
+            lambda text: text.replace('"version": "0.7.1"', '"version": "9.9.9"', 1),
         )
         self.assertIn("HOST_MANIFEST_VERSION", finding_codes(self.validate()))
 
@@ -223,6 +223,12 @@ class TestPromptRegressionDetection(PromptContractTestCase):
             ),
         )
         self.assertIn("OPENAI_MARKETPLACE_SOURCE", finding_codes(self.validate()))
+
+    def test_windows_checkout_rejects_non_ascii_repository_path(self):
+        invalid_path = self.repo_root / "docs" / "사용안내.md"
+        invalid_path.parent.mkdir(parents=True, exist_ok=True)
+        invalid_path.write_text("Windows checkout regression", encoding="utf-8")
+        self.assertIn("WINDOWS_CHECKOUT_PATH", finding_codes(self.validate()))
 
     def test_claude_helpers_have_direct_execution_fallback(self):
         self.rewrite(
