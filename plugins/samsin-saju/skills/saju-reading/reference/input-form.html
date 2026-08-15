@@ -23,7 +23,7 @@
   키(대비·상태): 라벨-입력 대비 var 토큰 사용, 각 컨트롤 focus 링 내장(pre-styled),
   선택된 pill은 aria-pressed=true + 시각 강조. 키보드: 모든 pill은 <button>이라 Tab 도달.
 -->
-<h2 class="sr-only">삼신이 사주풀이 입력 폼 — 성별, 음양력, 생년월일, 태어난 시, 이름, 성향을 고르고 보따리 펼치기를 누르면 삼신이가 풀이를 시작한다.</h2>
+<h2 class="sr-only">삼신이 사주풀이 입력 폼 — 성별, 음양력, 생년월일, 태어난 시, 이름, 성향을 입력하면 삼신이가 풀이를 시작한다.</h2>
 
 <style>
   .samsin-form { max-width: 560px; margin: 0 auto; padding: 1rem 0; font-size: 15px; line-height: 1.7; }
@@ -45,15 +45,15 @@
 
 <div class="samsin-form">
   <div class="grp">
-    <p class="lead">우리 아가, 사내아이냐 계집아이냐? <span class="req">꼭 있어야 큰 흐름을 짚는단다</span></p>
+    <p class="lead">대운 계산에 필요한 성별 기준을 골라줘. <span class="req">필수</span></p>
     <div class="pills" role="group" aria-label="성별">
-      <button type="button" class="pill" data-field="gender" data-value="male">남자</button>
-      <button type="button" class="pill" data-field="gender" data-value="female">여자</button>
+      <button type="button" class="pill" data-field="gender" data-value="male">남성</button>
+      <button type="button" class="pill" data-field="gender" data-value="female">여성</button>
     </div>
   </div>
 
   <div class="grp">
-    <p class="lead">양력으로 아니, 음력으로 아니? <span class="req">필수</span></p>
+    <p class="lead">생년월일은 양력이니, 음력이니? <span class="req">필수</span></p>
     <div class="pills" role="group" aria-label="음양력">
       <button type="button" class="pill" data-field="calendar" data-value="solar">양력</button>
       <button type="button" class="pill" data-field="calendar" data-value="lunar">음력(평달)</button>
@@ -62,12 +62,12 @@
   </div>
 
   <div class="grp">
-    <p class="lead">언제 세상에 왔니? 생년월일을 짚어주렴 <span class="req">필수</span></p>
+    <p class="lead">생년월일을 알려줘. <span class="req">필수</span></p>
     <input type="date" id="birthDate" aria-label="생년월일" />
   </div>
 
   <div class="grp">
-    <p class="lead">몇 시쯤 세상 빛을 봤니? 기억나는 대로 고르렴 (몰라도 괜찮단다)</p>
+    <p class="lead">태어난 시간을 골라줘. 정확히 모르면 ‘시 모름’을 고르면 된단다.</p>
     <div class="pills" role="group" aria-label="태어난 시">
       <button type="button" class="pill" data-field="time" data-value="ja">자시 (밤 11시 반~새벽 1시 반)</button>
       <button type="button" class="pill" data-field="time" data-value="chuk">축시 (1시 반~3시 반)</button>
@@ -86,12 +86,12 @@
   </div>
 
   <div class="grp">
-    <p class="lead">이름은 무어라 부르면 좋겠니? (말하기 싫으면 그냥 '아가'라 부르마)</p>
+    <p class="lead">어떤 이름으로 부르면 좋을까? 적지 않아도 괜찮아.</p>
     <input type="text" id="name" placeholder="영희" aria-label="이름 (선택)" />
   </div>
 
   <div class="grp">
-    <p class="lead">혹시 네 성향, 스스로 아는 게 있니? 아래에서 골라도 되고, 몰라도 괜찮단다 (선택)</p>
+    <p class="lead">평소 알고 있는 성향 유형이 있다면 골라줘. 모르면 건너뛰어도 돼. <span class="req">선택</span></p>
     <div class="mbti-grid" role="group" aria-label="성향 선택">
       <button type="button" class="pill" data-field="mbti" data-value="ISTJ">ISTJ</button>
       <button type="button" class="pill" data-field="mbti" data-value="ISFJ">ISFJ</button>
@@ -113,12 +113,12 @@
     <div class="dunno pills" role="group" aria-label="성향 모름">
       <button type="button" class="pill" data-field="mbti" data-value="unknown">몰라요 / 모름</button>
     </div>
-    <p class="hint">성향은 삼신이가 조언을 좀 더 네 결에 맞춰 전하려는 참고일 뿐, 사주 풀이 자체는 넣든 안 넣든 똑같이 펼쳐진단다.</p>
+    <p class="hint">성향 정보는 조언을 편하게 전달하기 위한 참고값이야. 입력하지 않아도 사주 풀이는 똑같이 진행돼.</p>
   </div>
 
   <div class="actions">
-    <button type="button" class="pill" id="talk">그냥 말로 할게</button>
-    <button type="button" class="pill go" id="submit">보따리 펼치기</button>
+    <button type="button" class="pill" id="talk">대화로 입력할게</button>
+    <button type="button" class="pill go" id="submit">풀이 시작하기</button>
   </div>
   <p class="hint" id="warn" style="color: var(--text-danger); display: none;"></p>
 </div>
@@ -142,7 +142,7 @@
     });
 
     document.getElementById('talk').addEventListener('click', function () {
-      sendPrompt('그냥 말로 할게');
+      sendPrompt('대화로 입력할게');
     });
 
     document.getElementById('submit').addEventListener('click', function () {
@@ -153,7 +153,7 @@
       if (!state.calendar) missing.push('양력·음력');
       if (!date) missing.push('생년월일');
       if (missing.length) {
-        warn.textContent = '아직 ' + missing.join(', ') + '은(는) 안 골랐구나. 그것만 짚어주면 바로 펼쳐주마.';
+        warn.textContent = '아직 ' + missing.join(', ') + ' 정보가 빠졌구나. 이 항목만 채우면 바로 시작할게.';
         warn.style.display = 'block';
         return;
       }
@@ -163,8 +163,8 @@
         ? (state.time === 'unknown' ? '시 모름' : state.time)
         : '시 모름';
       var lines = [];
-      lines.push('보따리 펼치기 — 입력 폼으로 골랐단다.');
-      lines.push('- 성별: ' + (state.gender === 'male' ? '남자' : '여자'));
+      lines.push('사주풀이 입력 정보를 제출할게.');
+      lines.push('- 성별: ' + (state.gender === 'male' ? '남성' : '여성'));
       var calLabel = state.calendar === 'solar' ? '양력'
         : state.calendar === 'lunar' ? '음력(평달)' : '음력(윤달)';
       lines.push('- 음양력: ' + calLabel);

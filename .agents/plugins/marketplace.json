@@ -1,0 +1,20 @@
+{
+  "name": "samsin-saju",
+  "interface": {
+    "displayName": "삼신이 사주풀이"
+  },
+  "plugins": [
+    {
+      "name": "samsin-saju",
+      "source": {
+        "source": "local",
+        "path": "./plugins/samsin-saju"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Lifestyle"
+    }
+  ]
+}

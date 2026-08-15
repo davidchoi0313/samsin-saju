@@ -1,0 +1,4 @@
+interface:
+  display_name: "삼신이 사주풀이"
+  short_description: "만세력 계산을 생활 조언과 실행 카드로 풀어드려요"
+  default_prompt: "$saju-reading을 사용해 생년 정보로 사주를 풀고 오늘부터 해볼 행동까지 정리해 주세요."

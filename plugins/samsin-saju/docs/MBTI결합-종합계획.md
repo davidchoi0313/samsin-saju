@@ -1,5 +1,7 @@
 # 삼신이 × MBTI 결합 종합 계획 (개발팀 인계용)
 
+> **보관 문서(2026-08-15):** 초기 가설과 결정 이력을 남긴 자료이며 현행 구현 계약이 아닙니다. 새 작업은 `skills/saju-reading/SKILL.md`, `reference/output-contract.md`, `reference/action-library.md`, `reference/mbti-layer.md`만 기준으로 삼으세요. 특히 강제 분량·옛말 예시·면책 순서는 이 문서에서 가져오지 않습니다.
+
 > 문서 성격: 계획 수립 단계 산출물. 실제 코드 구현은 다음 단계 개발팀 인계. 단 §6 프로토타입 스펙은 개발 착수 가능한 수준으로 구체화.
 > 대상 플러그인: `plugins/samsin-saju/` (삼신이 사주풀이 · plugin.json v0.4.0 · 15메뉴)
 > 작성: 전략팀 (plugin-architect · ai-product-manager · trend-researcher 임베딩) → 매니저 검수 → 담당자님
