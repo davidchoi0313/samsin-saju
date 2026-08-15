@@ -162,7 +162,7 @@ class TestPromptRegressionDetection(PromptContractTestCase):
     def test_openai_and_claude_manifest_versions_must_match(self):
         self.rewrite_path(
             self.plugin_root / ".codex-plugin" / "plugin.json",
-            lambda text: text.replace('"version": "0.6.0"', '"version": "0.6.1"', 1),
+            lambda text: text.replace('"version": "0.7.0"', '"version": "0.7.1"', 1),
         )
         self.assertIn("HOST_MANIFEST_VERSION", finding_codes(self.validate()))
 
@@ -173,12 +173,45 @@ class TestPromptRegressionDetection(PromptContractTestCase):
         )
         self.assertIn("CODEX_SKILLS_PATH", finding_codes(self.validate()))
 
+    def test_openai_public_assets_must_resolve(self):
+        self.rewrite_path(
+            self.plugin_root / ".codex-plugin" / "plugin.json",
+            lambda text: text.replace(
+                '"logo": "./assets/logo.png"',
+                '"logo": "./assets/missing.png"',
+                1,
+            ),
+        )
+        self.assertIn("OPENAI_PUBLIC_ASSET", finding_codes(self.validate()))
+
+    def test_openai_public_legal_urls_must_use_https(self):
+        self.rewrite_path(
+            self.plugin_root / ".codex-plugin" / "plugin.json",
+            lambda text: text.replace(
+                '"privacyPolicyURL": "https://',
+                '"privacyPolicyURL": "http://',
+                1,
+            ),
+        )
+        self.assertIn("OPENAI_PUBLIC_URL", finding_codes(self.validate()))
+
     def test_openai_interface_requires_all_three_values(self):
         self.rewrite(
             "agents/openai.yaml",
             lambda text: text.replace("  default_prompt:", "  removed_prompt:", 1),
         )
         self.assertIn("OPENAI_INTERFACE_FIELDS", finding_codes(self.validate()))
+
+    def test_openai_default_prompt_describes_saju_and_action(self):
+        self.rewrite(
+            "agents/openai.yaml",
+            lambda text: text.replace(
+                "생년 정보로 사주를 풀고 오늘부터 해볼 행동까지 정리해 주세요.",
+                "무언가를 도와주세요.",
+                1,
+            ),
+        )
+        self.assertIn("OPENAI_DEFAULT_PROMPT_SKILL", finding_codes(self.validate()))
 
     def test_openai_marketplace_source_must_resolve(self):
         self.rewrite_path(

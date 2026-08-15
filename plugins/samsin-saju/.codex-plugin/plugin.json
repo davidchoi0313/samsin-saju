@@ -1,10 +1,11 @@
 {
   "name": "samsin-saju",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "정해진 만세력 계산을 바탕으로 15가지 전통 명리 메뉴를 쉬운 한국어와 구체적인 실행 카드로 풀어주는 삼신이 사주풀이 플러그인입니다.",
   "author": {
     "name": "MEBRIC",
-    "email": "yh.choi@mebric.com"
+    "email": "yh.choi@mebric.com",
+    "url": "https://github.com/davidchoi0313/samsin-saju"
   },
   "homepage": "https://github.com/davidchoi0313/samsin-saju",
   "repository": "https://github.com/davidchoi0313/samsin-saju",
@@ -23,11 +24,17 @@
     "shortDescription": "만세력 계산을 생활 조언과 실행 카드로 풀어드려요",
     "longDescription": "생년 정보를 정해진 만세력 엔진으로 계산한 뒤, 실제 산출값만 전통 명리 관점으로 해석합니다. 어려운 용어는 생활 장면으로 설명하고 오늘 10분·이번 주 실험·확인 기준까지 제안합니다.",
     "developerName": "MEBRIC",
+    "category": "Entertainment",
+    "capabilities": ["Read"],
     "websiteURL": "https://github.com/davidchoi0313/samsin-saju",
+    "privacyPolicyURL": "https://github.com/davidchoi0313/samsin-saju/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/davidchoi0313/samsin-saju/blob/main/TERMS.md",
     "defaultPrompt": [
       "생년 정보를 바탕으로 평생사주를 보고 오늘부터 해볼 행동까지 정리해 주세요.",
       "두 사람의 사주 궁합을 보고 실제 대화에서 시험할 방법까지 알려 주세요."
     ],
-    "brandColor": "#7C5CFC"
+    "brandColor": "#7C5CFC",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png"
   }
 }

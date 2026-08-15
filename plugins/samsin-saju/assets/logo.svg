@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">삼신이 사주풀이</title>
+  <desc id="desc">보랏빛 밤하늘 위 초승달과 세 개의 별</desc>
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4B347C"/>
+      <stop offset="1" stop-color="#8C6BE8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#night)"/>
+  <circle cx="233" cy="246" r="132" fill="#FFF7DE"/>
+  <circle cx="292" cy="202" r="132" fill="#7557C7"/>
+  <circle cx="344" cy="127" r="13" fill="#FFD978"/>
+  <circle cx="391" cy="185" r="9" fill="#FFD978"/>
+  <circle cx="349" cy="239" r="7" fill="#FFD978"/>
+  <path d="M139 372c66 39 168 44 237 0" fill="none" stroke="#D8C8FF" stroke-width="18" stroke-linecap="round"/>
+</svg>
