@@ -64,8 +64,11 @@ print(json.dumps({
             "PIP_NO_INDEX": "1",
             "PIP_DISABLE_PIP_VERSION_CHECK": "1",
         })
+        # -X utf8: -I 는 환경변수를 무시하므로 PYTHONIOENCODING 이 안 먹는다.
+        # 이게 없으면 한국어 Windows 에서 자식 stdout 이 cp949 로 잡혀
+        # 간지 한자를 utf-8 로 읽다가 UnicodeDecodeError 가 난다.
         completed = subprocess.run(
-            [sys.executable, "-I", "-S", "-c", probe, engine_path],
+            [sys.executable, "-I", "-S", "-X", "utf8", "-c", probe, engine_path],
             check=True,
             capture_output=True,
             text=True,
