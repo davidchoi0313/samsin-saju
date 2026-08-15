@@ -9,6 +9,7 @@
 """
 
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -44,10 +45,14 @@ class PromptContractTestCase(unittest.TestCase):
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_plugin_root / relative, destination)
 
-        marketplace_relative = Path(".agents/plugins/marketplace.json")
-        marketplace_destination = self.repo_root / marketplace_relative
-        marketplace_destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source_repo_root / marketplace_relative, marketplace_destination)
+        for marketplace_relative in (
+            Path(".agents/plugins/marketplace.json"),
+            # 버전 동기 검사가 세 매니페스트를 모두 읽는다.
+            Path(".claude-plugin/marketplace.json"),
+        ):
+            marketplace_destination = self.repo_root / marketplace_relative
+            marketplace_destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_repo_root / marketplace_relative, marketplace_destination)
 
     def validate(self):
         return quality_contract.validate_prompt_contract(self.root)
@@ -229,6 +234,68 @@ class TestPromptRegressionDetection(PromptContractTestCase):
         invalid_path.parent.mkdir(parents=True, exist_ok=True)
         invalid_path.write_text("Windows checkout regression", encoding="utf-8")
         self.assertIn("WINDOWS_CHECKOUT_PATH", finding_codes(self.validate()))
+
+    def test_windows_checkout_sees_committed_path_that_cannot_exist_on_disk(self):
+        """디스크에 실현될 수 없는 경로도 추적 목록으로 잡아야 한다.
+
+        Windows는 따옴표가 든 폴더를 만들지 못해 파일시스템 순회로는 영영
+        안 보인다. 실제로 그런 경로가 커밋돼 Windows clone이 통째로 실패했다.
+        """
+
+        def git(root, *args, stdin=b""):
+            return subprocess.run(
+                ["git", "-C", str(root), *args],
+                input=stdin,
+                capture_output=True,
+                check=True,
+            ).stdout
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            try:
+                subprocess.run(
+                    ["git", "init", "-q", "-b", "main", str(root)],
+                    capture_output=True,
+                    check=True,
+                )
+            except (OSError, subprocess.CalledProcessError):
+                self.skipTest("git을 실행할 수 없는 환경")
+
+            (root / "ok.md").write_text("x", encoding="utf-8")
+            git(root, "add", "ok.md")
+            git(
+                root,
+                "-c",
+                "user.email=t@example.com",
+                "-c",
+                "user.name=test",
+                "commit",
+                "-q",
+                "-m",
+                "init",
+            )
+
+            blob = git(root, "hash-object", "-w", "--stdin", stdin=b"x").decode().strip()
+            base = git(root, "ls-tree", "HEAD")
+            entry = b'100644 blob ' + blob.encode() + b'\t"\\"plugins"\n'
+            tree = git(root, "mktree", stdin=base + entry).decode().strip()
+            commit = (
+                git(root, "commit-tree", tree, "-p", "HEAD", "-m", "bad", stdin=b"")
+                .decode()
+                .strip()
+            )
+            git(root, "update-ref", "refs/heads/main", commit)
+
+            self.assertIn('"plugins', quality_contract._tracked_paths(root))
+            findings = quality_contract._validate_windows_checkout_paths(root)
+            self.assertIn("WINDOWS_CHECKOUT_PATH", finding_codes(findings))
+
+    def test_manifest_versions_must_match_across_all_three(self):
+        self.rewrite_path(
+            self.repo_root / ".claude-plugin" / "marketplace.json",
+            lambda text: text.replace('"version": "', '"version": "9', 1),
+        )
+        self.assertIn("VERSION_MISMATCH", finding_codes(self.validate()))
 
     def test_claude_helpers_have_direct_execution_fallback(self):
         self.rewrite(

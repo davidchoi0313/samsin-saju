@@ -17,9 +17,10 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from dataclasses import asdict, dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Iterable, Sequence
 
 
@@ -558,6 +559,42 @@ def _validate_action_library(text: str, path: str) -> list[Violation]:
     return findings
 
 
+def _tracked_paths(repository_root: Path) -> list[str] | None:
+    """git이 추적하는 경로 목록. git 저장소가 아니거나 git이 없으면 None.
+
+    파일시스템을 걷는 방식만으로는 Windows에서 만들 수 없는 이름을 영영 못 본다.
+    실제로 루트에 따옴표로 시작하는 폴더가 커밋돼 Windows clone이 통째로
+    실패했는데, 그 경로는 디스크에 존재할 수 없어 rglob에 잡히지 않았다.
+    추적 목록은 디스크에 실현되지 않은 경로까지 보여준다.
+    """
+
+    commands = (
+        # 인덱스: 아직 커밋 안 된 것까지 잡는다.
+        ["git", "-C", str(repository_root), "ls-files", "-z"],
+        # 커밋된 트리: Windows는 금지 문자 경로를 인덱스에 못 넣으므로,
+        # 이미 커밋돼 들어온 경로는 이쪽으로만 보인다.
+        ["git", "-C", str(repository_root), "ls-tree", "-r", "-z", "--name-only", "HEAD"],
+    )
+
+    collected: list[str] = []
+    any_success = False
+    for command in commands:
+        try:
+            completed = subprocess.run(command, capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            continue
+        any_success = True
+        collected.extend(
+            entry.decode("utf-8", errors="surrogateescape")
+            for entry in completed.stdout.split(b"\0")
+            if entry
+        )
+
+    if not any_success:
+        return None
+    return sorted(set(collected))
+
+
 def _validate_windows_checkout_paths(repository_root: Path) -> list[Violation]:
     """ChatGPT Windows 설치기가 안전하게 체크아웃할 수 있는 경로인지 검사한다."""
 
@@ -572,8 +609,22 @@ def _validate_windows_checkout_paths(repository_root: Path) -> list[Violation]:
     }
     invalid_characters = set('<>:"\\|?*')
 
-    for path in repository_root.rglob("*"):
-        relative = path.relative_to(repository_root)
+    tracked = _tracked_paths(repository_root)
+    if tracked is None:
+        candidates = [
+            path.relative_to(repository_root) for path in repository_root.rglob("*")
+        ]
+    else:
+        # 추적 목록은 파일만 준다. 상위 폴더 이름도 검사 대상이라 함께 펼친다.
+        seen: dict[str, PurePosixPath] = {}
+        for entry in tracked:
+            pure = PurePosixPath(entry)
+            for depth in range(1, len(pure.parts) + 1):
+                partial = PurePosixPath(*pure.parts[:depth])
+                seen.setdefault(str(partial), partial)
+        candidates = list(seen.values())
+
+    for relative in candidates:
         if any(part in {".git", "__pycache__"} for part in relative.parts):
             continue
 
@@ -598,6 +649,93 @@ def _validate_windows_checkout_paths(repository_root: Path) -> list[Violation]:
                     "이식 가능한 ASCII 경로를 사용해야 합니다.",
                 )
             )
+
+    return findings
+
+
+def _validate_manifest_versions(
+    repository_root: Path, plugin_root: Path
+) -> list[Violation]:
+    """버전이 흩어진 세 매니페스트가 같은 SemVer를 쓰는지 검사한다.
+
+    루트 마켓플레이스는 plugins[] 안에, 나머지 둘은 최상위에 version을 둔다.
+    하나만 올리고 나머지를 잊는 사고를 pytest가 바로 잡도록 여기에 넣는다.
+    """
+
+    findings: list[Violation] = []
+    sources = (
+        (".claude-plugin/marketplace.json", repository_root / ".claude-plugin" / "marketplace.json"),
+        (
+            "plugins/samsin-saju/.claude-plugin/plugin.json",
+            plugin_root / ".claude-plugin" / "plugin.json",
+        ),
+        (
+            "plugins/samsin-saju/.codex-plugin/plugin.json",
+            plugin_root / ".codex-plugin" / "plugin.json",
+        ),
+    )
+
+    found: dict[str, str | None] = {}
+    for relative, path in sources:
+        text = _read(path, findings, relative)
+        if text is None:
+            found[relative] = None
+            continue
+        data = _parse_json_contract(text, path=relative, findings=findings)
+        if data is None:
+            found[relative] = None
+            continue
+        if "plugins" in data:
+            entries = data.get("plugins")
+            entry = next(
+                (
+                    candidate
+                    for candidate in entries
+                    if isinstance(candidate, dict)
+                    and candidate.get("name") == plugin_root.name
+                ),
+                None,
+            ) if isinstance(entries, list) else None
+            value = entry.get("version") if isinstance(entry, dict) else None
+        else:
+            value = data.get("version")
+        found[relative] = value if isinstance(value, str) else None
+
+    missing = [relative for relative, value in found.items() if value is None]
+    if missing:
+        findings.append(
+            Violation(
+                "VERSION_MISMATCH",
+                missing[0],
+                "버전을 읽지 못한 매니페스트가 있습니다: " + ", ".join(missing),
+            )
+        )
+        return findings
+
+    invalid = [
+        f"{relative}={value}"
+        for relative, value in found.items()
+        if not re.fullmatch(r"\d+\.\d+\.\d+", str(value))
+    ]
+    if invalid:
+        findings.append(
+            Violation(
+                "VERSION_MISMATCH",
+                sources[0][0],
+                "SemVer 형식이 아닌 버전이 있습니다: " + ", ".join(invalid),
+            )
+        )
+        return findings
+
+    if len(set(found.values())) > 1:
+        findings.append(
+            Violation(
+                "VERSION_MISMATCH",
+                sources[0][0],
+                "세 매니페스트의 버전이 모두 같아야 합니다: "
+                + ", ".join(f"{relative}={value}" for relative, value in found.items()),
+            )
+        )
 
     return findings
 
@@ -656,6 +794,8 @@ def _validate_host_compatibility(skill_root: Path) -> list[Violation]:
         if marketplace_text is not None
         else None
     )
+
+    findings.extend(_validate_manifest_versions(repository_root, plugin_root))
 
     if claude is not None and codex is not None:
         versions = (claude.get("version"), codex.get("version"))
