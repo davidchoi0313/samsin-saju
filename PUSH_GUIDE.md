@@ -114,7 +114,7 @@ claude plugin validate .
 1. 마켓플레이스 추가 후 목록에 뜬다. (데스크톱: Customize → Plugins 목록 / 터미널: `claude plugin marketplace list`)
 2. 설치 후 오류 없이 설치 완료 상태가 된다. (데스크톱: 목록에 enabled / 터미널: 설치 완료 메시지)
 3. **"사주 봐줘"** 라고 입력하면 삼신이가 응답한다. (데스크톱: Cowork·Chat 대화창)
-4. (Python) 만세력 엔진이 동작한다. `lunar_python` 미설치 시 자동 설치 안내가 뜨는지 확인.
+4. (Python) 외부 패키지 설치와 네트워크 없이 번들 만세력 엔진이 동작한다.
 
 ---
 

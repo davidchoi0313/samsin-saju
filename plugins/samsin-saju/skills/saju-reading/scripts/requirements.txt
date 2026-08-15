@@ -1,1 +1,2 @@
-lunar_python==1.4.8
+# No external runtime packages are required.
+# lunar-python v1.4.8 is bundled in vendor/lunar-python-1.4.8.

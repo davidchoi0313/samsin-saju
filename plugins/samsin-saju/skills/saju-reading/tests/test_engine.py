@@ -8,6 +8,8 @@ test_engine.py — 만세력 엔진 골든/엣지 테스트 (TDD 빨강 우선)
 """
 import sys
 import os
+import json
+import subprocess
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
@@ -24,6 +26,67 @@ def golden_card():
         "birthLongitude": 127.5,
         "earlyLateZiShi": "standard",
     })
+
+
+class TestVendoredRuntime(unittest.TestCase):
+    """공개·모바일 런타임에서 외부 설치 없이 계산되는지 확인."""
+
+    def test_clean_python_uses_bundled_lunar_source(self):
+        """site-packages와 PYTHONPATH 없이도 번들 v1.4.8로 골든 입력을 산출한다."""
+        engine_path = os.path.realpath(
+            os.path.join(os.path.dirname(__file__), "..", "scripts", "saju_engine.py")
+        )
+        probe = r"""
+import json
+import os
+import runpy
+import sys
+
+engine = runpy.run_path(sys.argv[1], run_name="vendored_runtime_probe")
+card = engine["build_card"]({
+    "gender": "male",
+    "calendar": "solar",
+    "birthDate": "1990-03-15",
+    "birthTime": "mau",
+    "birthLongitude": 127.5,
+    "earlyLateZiShi": "standard",
+})
+import lunar_python
+print(json.dumps({
+    "yearPillar": card["pillars"]["year"]["gan"] + card["pillars"]["year"]["zhi"],
+    "lunarModule": os.path.realpath(lunar_python.__file__),
+}, ensure_ascii=False))
+"""
+        env = os.environ.copy()
+        env.update({
+            "PYTHONPATH": "",
+            "PYTHONNOUSERSITE": "1",
+            "PIP_NO_INDEX": "1",
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+        })
+        completed = subprocess.run(
+            [sys.executable, "-I", "-S", "-c", probe, engine_path],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
+        )
+        result = json.loads(completed.stdout)
+        expected_vendor = os.path.realpath(
+            os.path.join(
+                os.path.dirname(engine_path),
+                "vendor",
+                "lunar-python-1.4.8",
+                "lunar_python",
+            )
+        )
+
+        self.assertEqual(result["yearPillar"], "庚午")
+        self.assertEqual(
+            os.path.commonpath([result["lunarModule"], expected_vendor]),
+            expected_vendor,
+        )
 
 
 class TestGoldenCase(unittest.TestCase):

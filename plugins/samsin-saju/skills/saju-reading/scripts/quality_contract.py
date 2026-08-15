@@ -60,9 +60,6 @@ PERSONALITY_DISCLAIMER = (
     "참고로만 사용했습니다."
 )
 
-PLUGIN_VERSION = "0.6.0"
-
-
 MENU_FILES = {
     1: "01-pyeongsaeng.md",
     2: "02-olhae.md",
@@ -604,13 +601,17 @@ def _validate_host_compatibility(skill_root: Path) -> list[Violation]:
 
     if claude is not None and codex is not None:
         versions = (claude.get("version"), codex.get("version"))
-        if versions != (PLUGIN_VERSION, PLUGIN_VERSION):
+        valid_versions = all(
+            isinstance(value, str) and re.fullmatch(r"\d+\.\d+\.\d+", value)
+            for value in versions
+        )
+        if not valid_versions or versions[0] != versions[1]:
             findings.append(
                 Violation(
                     "HOST_MANIFEST_VERSION",
                     codex_rel,
-                    "Claude·OpenAI manifest 버전은 모두 "
-                    f"{PLUGIN_VERSION}이어야 합니다(현재 {versions[0]!r}, {versions[1]!r}).",
+                    "Claude·OpenAI manifest 버전은 같은 유효한 SemVer여야 합니다"
+                    f"(현재 {versions[0]!r}, {versions[1]!r}).",
                 )
             )
         if claude.get("name") != codex.get("name"):
@@ -639,6 +640,67 @@ def _validate_host_compatibility(skill_root: Path) -> list[Violation]:
                 )
             )
 
+        interface = codex.get("interface")
+        if not isinstance(interface, dict):
+            findings.append(
+                Violation(
+                    "OPENAI_PUBLIC_INTERFACE",
+                    codex_rel,
+                    "공개 설치 화면에 필요한 interface 객체가 있어야 합니다.",
+                )
+            )
+        else:
+            if interface.get("category") != "Entertainment":
+                findings.append(
+                    Violation(
+                        "OPENAI_PUBLIC_CATEGORY",
+                        codex_rel,
+                        "공개 디렉터리 category는 Entertainment여야 합니다.",
+                    )
+                )
+            for key in ("composerIcon", "logo"):
+                value = interface.get(key)
+                asset_path = plugin_root / value if isinstance(value, str) else None
+                if (
+                    asset_path is None
+                    or not value.startswith("./assets/")
+                    or asset_path.suffix.lower() != ".png"
+                    or not asset_path.is_file()
+                ):
+                    findings.append(
+                        Violation(
+                            "OPENAI_PUBLIC_ASSET",
+                            codex_rel,
+                            f"{key}은 plugin/assets 아래의 실제 PNG를 가리켜야 합니다.",
+                        )
+                    )
+            for key in ("websiteURL", "privacyPolicyURL", "termsOfServiceURL"):
+                value = interface.get(key)
+                if not isinstance(value, str) or not value.startswith("https://"):
+                    findings.append(
+                        Violation(
+                            "OPENAI_PUBLIC_URL",
+                            codex_rel,
+                            f"{key}에는 공개 HTTPS URL이 필요합니다.",
+                        )
+                    )
+
+        legal_files = {
+            "PRIVACY.md": ("처리하는 정보", "보존 기간", "수신자"),
+            "TERMS.md": ("서비스의 성격", "금지되는 이용", "준거법"),
+            "SUPPORT.md": ("지원 페이지", "이메일", "개인정보"),
+        }
+        for filename, snippets in legal_files.items():
+            legal_text = _read(repository_root / filename, findings, filename)
+            if legal_text is not None and any(snippet not in legal_text for snippet in snippets):
+                findings.append(
+                    Violation(
+                        "OPENAI_PUBLIC_POLICY",
+                        filename,
+                        "공개 배포 정책 문서의 필수 설명이 빠졌습니다.",
+                    )
+                )
+
     if openai_text is not None:
         interface_values = _openai_interface_values(openai_text)
         required = ("display_name", "short_description", "default_prompt")
@@ -651,12 +713,14 @@ def _validate_host_compatibility(skill_root: Path) -> list[Violation]:
                     "OpenAI 인터페이스 필수 값이 없습니다: " + ", ".join(missing),
                 )
             )
-        elif "$saju-reading" not in interface_values["default_prompt"]:
+        elif not all(
+            token in interface_values["default_prompt"] for token in ("사주", "행동")
+        ):
             findings.append(
                 Violation(
                     "OPENAI_DEFAULT_PROMPT_SKILL",
                     openai_rel,
-                    "default_prompt가 $saju-reading 스킬을 명시적으로 호출해야 합니다.",
+                    "default_prompt가 사주 풀이와 행동 제안을 자연어로 설명해야 합니다.",
                 )
             )
 
@@ -685,6 +749,14 @@ def _validate_host_compatibility(skill_root: Path) -> list[Violation]:
                     "OPENAI_MARKETPLACE_SOURCE",
                     marketplace_rel,
                     "마켓플레이스 source.path가 실제 plugins/samsin-saju 폴더를 가리켜야 합니다.",
+                )
+            )
+        if plugin_entry is not None and plugin_entry.get("category") != "Entertainment":
+            findings.append(
+                Violation(
+                    "OPENAI_MARKETPLACE_CATEGORY",
+                    marketplace_rel,
+                    "repo marketplace category도 Entertainment로 맞춰야 합니다.",
                 )
             )
 

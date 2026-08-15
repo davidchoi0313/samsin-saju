@@ -33,67 +33,68 @@ import json
 import math
 import argparse
 import datetime
-from importlib import invalidate_caches
-from importlib.metadata import PackageNotFoundError, version as package_version
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import importlib
 
 
-# ─────────────────────────────────────────────────────────────────────────
-# 1. lunar_python 로딩 (graceful degradation)
-# ─────────────────────────────────────────────────────────────────────────
 LUNAR_PYTHON_VERSION = "1.4.8"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+VENDORED_LUNAR_ROOT = os.path.join(
+    SCRIPT_DIR, "vendor", f"lunar-python-{LUNAR_PYTHON_VERSION}"
+)
+VENDORED_LUNAR_PACKAGE = os.path.join(VENDORED_LUNAR_ROOT, "lunar_python")
+
+# Public/mobile skill runtimes cannot be expected to run pip or reach PyPI.
+# Put the tag-pinned source bundle ahead of every environment package.
+sys.path.insert(0, VENDORED_LUNAR_ROOT)
+sys.path.insert(1, SCRIPT_DIR)
 
 
-def _installed_lunar_version():
-    """설치된 lunar_python 배포판 버전을 반환한다."""
+# ─────────────────────────────────────────────────────────────────────────
+# 1. 번들 lunar_python 로딩 (런타임 설치·네트워크 불요)
+# ─────────────────────────────────────────────────────────────────────────
+def _is_vendored_lunar(module):
+    """모듈이 플러그인에 포함된 고정 소스에서 로드됐는지 확인한다."""
+    module_file = os.path.realpath(getattr(module, "__file__", ""))
+    package_root = os.path.realpath(VENDORED_LUNAR_PACKAGE)
     try:
-        return package_version("lunar_python")
-    except PackageNotFoundError:
-        return None
+        return os.path.commonpath([module_file, package_root]) == package_root
+    except ValueError:
+        return False
 
 
 def _load_lunar():
-    """검증된 lunar_python 버전을 로드하고, 없거나 다르면 설치를 한 번 시도한다.
+    """플러그인에 포함된 lunar_python v1.4.8만 로드한다.
 
-    샌드박스 견고성: 버전 확인 → pip 자동 설치 → 재확인 → 그래도 실패면
-    명확한 안내 메시지와 함께 RuntimeError를 낸다. 다른 버전을 조용히
-    받아들이지 않아 동일 입력의 계산 재현성을 지킨다.
+    외부 설치본이 이미 import된 특이한 호스트에서도 그것을 재사용하지 않고
+    번들 소스를 다시 불러온다. 번들이 손상됐다면 네트워크 설치를 시도하지
+    않고 플러그인 재설치를 요청해 계산 재현성을 지킨다.
     """
-    installed = _installed_lunar_version()
-    if installed == LUNAR_PYTHON_VERSION:
-        try:
-            from lunar_python import Solar, Lunar  # noqa
-            return Solar, Lunar
-        except ImportError:
-            pass
+    if not os.path.isfile(os.path.join(VENDORED_LUNAR_PACKAGE, "__init__.py")):
+        raise RuntimeError(
+            "번들 만세력 엔진(lunar-python v1.4.8)이 없습니다. "
+            "플러그인을 다시 설치해 주세요."
+        )
 
-    # 자동 설치 1회 시도
-    import subprocess
-    for args in (
-        [sys.executable, "-m", "pip", "install", f"lunar_python=={LUNAR_PYTHON_VERSION}",
-         "--break-system-packages", "--quiet"],
-        [sys.executable, "-m", "pip", "install", f"lunar_python=={LUNAR_PYTHON_VERSION}", "--quiet"],
-    ):
-        try:
-            subprocess.run(args, check=True,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            invalidate_caches()
-            if _installed_lunar_version() != LUNAR_PYTHON_VERSION:
-                continue
-            from lunar_python import Solar, Lunar  # noqa
-            return Solar, Lunar
-        except Exception:
-            continue
+    loaded = sys.modules.get("lunar_python")
+    if loaded is not None and not _is_vendored_lunar(loaded):
+        for name in tuple(sys.modules):
+            if name == "lunar_python" or name.startswith("lunar_python."):
+                del sys.modules[name]
 
-    detected = installed or "미설치"
-    raise RuntimeError(
-        f"lunar_python {LUNAR_PYTHON_VERSION} 버전을 불러오지 못했습니다"
-        f"(현재: {detected}). "
-        "다음 명령으로 직접 설치해 주세요:\n"
-        f"    pip install lunar_python=={LUNAR_PYTHON_VERSION} --break-system-packages\n"
-        "설치 후 다시 실행하면 만세력 산출이 진행됩니다."
-    )
+    try:
+        package = importlib.import_module("lunar_python")
+    except ImportError as exc:
+        raise RuntimeError(
+            "번들 만세력 엔진(lunar-python v1.4.8)을 불러오지 못했습니다. "
+            "플러그인을 다시 설치해 주세요."
+        ) from exc
+
+    if not _is_vendored_lunar(package):
+        raise RuntimeError(
+            "고정된 번들 만세력 엔진이 아닌 외부 패키지가 감지됐습니다. "
+            "플러그인을 다시 설치해 주세요."
+        )
+    return package.Solar, package.Lunar
 
 
 Solar, Lunar = _load_lunar()

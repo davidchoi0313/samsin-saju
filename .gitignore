@@ -50,3 +50,6 @@ desktop.ini
 
 # ── 엔진 산출물(QA 캐시) ──
 qa/engine-output/*.json
+
+# ── OpenAI 제출용 로컬 산출물 ──
+openai-submission/*.zip
