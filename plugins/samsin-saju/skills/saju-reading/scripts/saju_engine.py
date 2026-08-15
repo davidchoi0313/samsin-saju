@@ -140,6 +140,22 @@ ZHI_MAIN_ELEMENT = {  # 지지 본기(本氣) 오행
     "午": "火", "未": "土", "申": "金", "酉": "金", "戌": "土", "亥": "水",
 }
 
+ELEMENT_GENERATES = {  # 상생: X가 낳는 오행
+    "木": "火", "火": "土", "土": "金", "金": "水", "水": "木",
+}
+ELEMENT_CONTROLS = {  # 상극: X가 이기는 오행
+    "木": "土", "土": "水", "水": "火", "火": "金", "金": "木",
+}
+
+# 사주 월(절기 월)의 시작 절기와 월지. 丑월만 다음 해 소한에서 시작하므로
+# lunar-python이 다음 주기용으로 내주는 XIAO_HAN 키를 쓴다.
+MONTH_TERM_KEYS = (
+    ("立春", "寅"), ("惊蛰", "卯"), ("清明", "辰"), ("立夏", "巳"),
+    ("芒种", "午"), ("小暑", "未"), ("立秋", "申"), ("白露", "酉"),
+    ("寒露", "戌"), ("立冬", "亥"), ("大雪", "子"), ("XIAO_HAN", "丑"),
+)
+MONTH_TERM_END_KEY = "LI_CHUN"  # 丑월의 끝 = 다음 해 입춘
+
 # 12지지 시 코드 → 대표 시각(시 중앙, 30분 시프트 라벨 기준 중앙 근처)
 TIME_CODE_TO_HM = {
     "ja": (0, 30), "chuk": (2, 0), "in": (4, 0), "mau": (6, 0),
@@ -415,8 +431,85 @@ def _daewoon(ec, gender, ref_year=None):
     }
 
 
+def _ten_god_for_gan(day_gan, target_gan):
+    """일간 기준으로 임의 천간의 십신을 낸다.
+
+    lunar-python은 원국 자리의 십신만 준다. 세운·월운처럼 원국 밖에서
+    들어오는 천간은 여기서 계산한다. 규칙은 벤더 라이브러리가 낸 원국
+    십신과 대조해 맞췄다(tests/test_engine.py 참조).
+    """
+    day_el = GAN_ELEMENT[day_gan]
+    target_el = GAN_ELEMENT[target_gan]
+    same_polarity = GAN_YINYANG[day_gan] == GAN_YINYANG[target_gan]
+    if target_el == day_el:
+        return "비견" if same_polarity else "겁재"
+    if ELEMENT_GENERATES[day_el] == target_el:
+        return "식신" if same_polarity else "상관"
+    if ELEMENT_CONTROLS[day_el] == target_el:
+        return "편재" if same_polarity else "정재"
+    if ELEMENT_CONTROLS[target_el] == day_el:
+        return "칠살" if same_polarity else "정관"
+    return "편인" if same_polarity else "정인"
+
+
+def _sewoon_monthly(ec, year):
+    """대상 연도 12개월의 월주 간지·오행·십신·원국 합충.
+
+    절기 월 기준이라 양력 달과 경계가 다르다. 각 절기 시각을 사서
+    구간 안쪽(시작 +5일)의 월주를 읽으므로 결정론이다.
+    """
+    table = Solar.fromYmd(year, 6, 30).getLunar().getJieQiTable()
+    day_gan = ec.getDayGan()
+    chart_zhis = [ec.getYearZhi(), ec.getMonthZhi(), ec.getDayZhi()]
+
+    boundaries = []
+    for term_key, _zhi in MONTH_TERM_KEYS:
+        term = table.get(term_key)
+        if term is None:
+            return []
+        boundaries.append(
+            datetime.datetime(
+                term.getYear(), term.getMonth(), term.getDay(),
+                term.getHour(), term.getMinute(), term.getSecond(),
+            )
+        )
+    end_term = table.get(MONTH_TERM_END_KEY)
+    if end_term is None:
+        return []
+    boundaries.append(
+        datetime.datetime(
+            end_term.getYear(), end_term.getMonth(), end_term.getDay(),
+            end_term.getHour(), end_term.getMinute(), end_term.getSecond(),
+        )
+    )
+
+    out = []
+    for index, (term_key, expected_zhi) in enumerate(MONTH_TERM_KEYS):
+        start = boundaries[index]
+        end = boundaries[index + 1]
+        inside = start + datetime.timedelta(days=5)
+        lun = Solar.fromYmdHms(
+            inside.year, inside.month, inside.day,
+            inside.hour, inside.minute, inside.second,
+        ).getLunar()
+        gz = lun.getMonthInGanZhi()
+        mon_gan = gz[0]
+        mon_zhi = gz[1] if len(gz) > 1 else ""
+        out.append({
+            "index": index + 1,
+            "startDate": start.strftime("%Y-%m-%d"),
+            "endDate": end.strftime("%Y-%m-%d"),
+            "ganZhi": gz,
+            "ganElement": GAN_ELEMENT.get(mon_gan, ""),
+            "zhiElement": ZHI_MAIN_ELEMENT.get(mon_zhi, ""),
+            "tenGod": _ten_god_for_gan(day_gan, mon_gan) if mon_gan else "",
+            "clashWithChart": _branch_relations(mon_zhi, chart_zhis),
+        })
+    return out
+
+
 def _sewoon(ec, year):
-    """세운(해운): 지정 연도의 천간지지·십신·원국 합충 단서."""
+    """세운(해운): 지정 연도의 천간지지·십신·원국 합충 단서와 12개월 월운."""
     sol = Solar.fromYmd(year, 6, 30)  # 해당 연도 대표일(입춘 지난 시점)
     lun = sol.getLunar()
     gz = lun.getYearInGanZhi()
@@ -431,7 +524,9 @@ def _sewoon(ec, year):
         "ganZhi": gz,
         "ganElement": GAN_ELEMENT.get(sew_gan, ""),
         "zhiElement": ZHI_MAIN_ELEMENT.get(sew_zhi, ""),
+        "tenGod": _ten_god_for_gan(ec.getDayGan(), sew_gan) if sew_gan else "",
         "clashWithChart": clashes,
+        "monthly": _sewoon_monthly(ec, year),
     }
 
 

@@ -208,6 +208,114 @@ class TestGoldenCase(unittest.TestCase):
         self.assertNotIn("disclaimer", self.card)
 
 
+GAN_ORDER = "甲乙丙丁戊己庚辛壬癸"
+ZHI_ORDER = "子丑寅卯辰巳午未申酉戌亥"
+MONTH_ZHI_ORDER = "寅卯辰巳午未申酉戌亥子丑"
+TEN_GODS = {
+    "비견", "겁재", "식신", "상관", "편재",
+    "정재", "칠살", "정관", "편인", "정인",
+}
+
+
+def sewoon_of(year, **overrides):
+    payload = {
+        "gender": "male", "calendar": "solar",
+        "birthDate": "1990-03-15", "birthTime": "mau",
+        "sewoonYear": year,
+    }
+    payload.update(overrides)
+    return saju_engine.build_card(payload)["sewoon"]
+
+
+class TestSewoonMonthly(unittest.TestCase):
+    """세운 월운: 카드에 월별 근거가 실제로 있어야 한다.
+
+    스타터 프롬프트가 '월별로'를 약속하는데 연간 간지만 있으면 AI가
+    없는 달을 지어내게 된다. 그 구멍을 막는 자리다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.monthly = sewoon_of(2026)["monthly"]
+
+    def test_twelve_months(self):
+        self.assertEqual(12, len(self.monthly))
+        self.assertEqual(list(range(1, 13)), [m["index"] for m in self.monthly])
+
+    def test_ganzhi_format(self):
+        for month in self.monthly:
+            ganzhi = month["ganZhi"]
+            self.assertEqual(2, len(ganzhi), ganzhi)
+            self.assertIn(ganzhi[0], GAN_ORDER, ganzhi)
+            self.assertIn(ganzhi[1], ZHI_ORDER, ganzhi)
+
+    def test_month_branches_follow_jeolgi_order(self):
+        """월지는 입춘의 寅부터 순서대로다. 양력 달과 경계가 다르다."""
+        self.assertEqual(
+            list(MONTH_ZHI_ORDER),
+            [month["ganZhi"][1] for month in self.monthly],
+        )
+
+    def test_stems_advance_through_sixty_cycle(self):
+        for earlier, later in zip(self.monthly, self.monthly[1:]):
+            expected = GAN_ORDER[(GAN_ORDER.index(earlier["ganZhi"][0]) + 1) % 10]
+            self.assertEqual(expected, later["ganZhi"][0])
+
+    def test_first_month_starts_at_ipchun(self):
+        first = self.monthly[0]
+        self.assertEqual("2026-02-04", first["startDate"])
+        self.assertEqual("2027-02-04", self.monthly[-1]["endDate"])
+
+    def test_periods_are_contiguous(self):
+        for earlier, later in zip(self.monthly, self.monthly[1:]):
+            self.assertEqual(earlier["endDate"], later["startDate"])
+
+    def test_ten_god_is_relative_to_day_master(self):
+        for month in self.monthly:
+            self.assertIn(month["tenGod"], TEN_GODS, month)
+
+    def test_ten_god_matches_vendor_for_natal_stems(self):
+        """일간 기준 십신 규칙을 벤더 라이브러리 산출과 대조한다."""
+        card = saju_engine.build_card({
+            "gender": "female", "calendar": "solar",
+            "birthDate": "1988-11-02", "birthTime": "yu",
+        })
+        day_gan = card["pillars"]["day"]["gan"]
+        for position in ("year", "month", "hour"):
+            self.assertEqual(
+                card["tenGods"][position],
+                saju_engine._ten_god_for_gan(
+                    day_gan, card["pillars"][position]["gan"]
+                ),
+                position,
+            )
+
+    def test_elements_match_ganzhi(self):
+        for month in self.monthly:
+            self.assertEqual(
+                saju_engine.GAN_ELEMENT[month["ganZhi"][0]], month["ganElement"]
+            )
+            self.assertEqual(
+                saju_engine.ZHI_MAIN_ELEMENT[month["ganZhi"][1]], month["zhiElement"]
+            )
+
+    def test_determinism(self):
+        self.assertEqual(self.monthly, sewoon_of(2026)["monthly"])
+
+    def test_different_year_gives_different_pillars(self):
+        other = sewoon_of(2027)["monthly"]
+        self.assertNotEqual(
+            [m["ganZhi"] for m in self.monthly], [m["ganZhi"] for m in other]
+        )
+
+    def test_hour_unknown_still_has_monthly(self):
+        monthly = sewoon_of(2026, birthTime="unknown")["monthly"]
+        self.assertEqual(12, len(monthly))
+
+    def test_annual_ten_god_present(self):
+        self.assertIn(sewoon_of(2026)["tenGod"], TEN_GODS)
+
+
 class TestEdgeCases(unittest.TestCase):
     """엣지 케이스: 깨지지 않음 확인."""
 
