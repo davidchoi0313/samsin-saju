@@ -8,6 +8,7 @@
 일부러 훼손해 핵심 회귀가 정확한 코드로 잡히는지도 확인한다.
 """
 
+import re
 import shutil
 import subprocess
 import sys
@@ -167,7 +168,8 @@ class TestPromptRegressionDetection(PromptContractTestCase):
     def test_openai_and_claude_manifest_versions_must_match(self):
         self.rewrite_path(
             self.plugin_root / ".codex-plugin" / "plugin.json",
-            lambda text: text.replace('"version": "0.7.1"', '"version": "9.9.9"', 1),
+            # 특정 버전을 박아두면 버전을 올릴 때마다 이 테스트가 먼저 깨진다.
+            lambda text: re.sub(r'"version": "\d+\.\d+\.\d+"', '"version": "9.9.9"', text, count=1),
         )
         self.assertIn("HOST_MANIFEST_VERSION", finding_codes(self.validate()))
 
