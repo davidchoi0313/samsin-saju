@@ -115,6 +115,18 @@ class TestGoldenCase(unittest.TestCase):
             [("여기", "甲"), ("정기", "乙")],
         )
 
+    def test_yongshin_candidates_are_actual_elements(self):
+        """용신 후보 element에는 오행값만 들어가 사용자 번역표와 어긋나지 않는다."""
+        candidates = self.card["yongshin"]["candidates"]
+        self.assertTrue(candidates)
+        self.assertTrue(
+            all(item["element"] in {"木", "火", "土", "金", "水"} for item in candidates)
+        )
+        self.assertIn(
+            {"type": "보완", "element": "水", "reason": "중화 사주에서 비어 있는 水 오행을 보완 후보로 본다"},
+            candidates,
+        )
+
     def test_sewoon_2027(self):
         """세운(2027): 丁未."""
         sw = saju_engine.build_card({

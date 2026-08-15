@@ -33,6 +33,8 @@ import json
 import math
 import argparse
 import datetime
+from importlib import invalidate_caches
+from importlib.metadata import PackageNotFoundError, version as package_version
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -40,35 +42,56 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # ─────────────────────────────────────────────────────────────────────────
 # 1. lunar_python 로딩 (graceful degradation)
 # ─────────────────────────────────────────────────────────────────────────
-def _load_lunar():
-    """lunar_python을 로드한다. 미설치 시 자동 설치 시도 후 재시도.
+LUNAR_PYTHON_VERSION = "1.4.8"
 
-    샌드박스 견고성: import 실패 → pip 자동 설치 → 재시도 → 그래도 실패면
-    명확한 안내 메시지와 함께 RuntimeError.
-    """
+
+def _installed_lunar_version():
+    """설치된 lunar_python 배포판 버전을 반환한다."""
     try:
-        from lunar_python import Solar, Lunar  # noqa
-        return Solar, Lunar
-    except ImportError:
-        pass
+        return package_version("lunar_python")
+    except PackageNotFoundError:
+        return None
+
+
+def _load_lunar():
+    """검증된 lunar_python 버전을 로드하고, 없거나 다르면 설치를 한 번 시도한다.
+
+    샌드박스 견고성: 버전 확인 → pip 자동 설치 → 재확인 → 그래도 실패면
+    명확한 안내 메시지와 함께 RuntimeError를 낸다. 다른 버전을 조용히
+    받아들이지 않아 동일 입력의 계산 재현성을 지킨다.
+    """
+    installed = _installed_lunar_version()
+    if installed == LUNAR_PYTHON_VERSION:
+        try:
+            from lunar_python import Solar, Lunar  # noqa
+            return Solar, Lunar
+        except ImportError:
+            pass
+
     # 자동 설치 1회 시도
     import subprocess
     for args in (
-        [sys.executable, "-m", "pip", "install", "lunar_python",
+        [sys.executable, "-m", "pip", "install", f"lunar_python=={LUNAR_PYTHON_VERSION}",
          "--break-system-packages", "--quiet"],
-        [sys.executable, "-m", "pip", "install", "lunar_python", "--quiet"],
+        [sys.executable, "-m", "pip", "install", f"lunar_python=={LUNAR_PYTHON_VERSION}", "--quiet"],
     ):
         try:
             subprocess.run(args, check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            invalidate_caches()
+            if _installed_lunar_version() != LUNAR_PYTHON_VERSION:
+                continue
             from lunar_python import Solar, Lunar  # noqa
             return Solar, Lunar
         except Exception:
             continue
+
+    detected = installed or "미설치"
     raise RuntimeError(
-        "lunar_python 라이브러리를 불러오지 못했습니다. "
+        f"lunar_python {LUNAR_PYTHON_VERSION} 버전을 불러오지 못했습니다"
+        f"(현재: {detected}). "
         "다음 명령으로 직접 설치해 주세요:\n"
-        "    pip install lunar_python --break-system-packages\n"
+        f"    pip install lunar_python=={LUNAR_PYTHON_VERSION} --break-system-packages\n"
         "설치 후 다시 실행하면 만세력 산출이 진행됩니다."
     )
 
@@ -484,10 +507,11 @@ def _yongshin(ec, five_el):
             "reason": f"신강한 일간({day_el})을 제어하는 {KE[day_el]}로 균형",
         })
     else:
-        candidates.append({
-            "type": "조후", "element": "통관",
-            "reason": "중화 사주 — 부족한 오행을 채워 흐름을 잇는다",
-        })
+        for missing_element in five_el["missing"]:
+            candidates.append({
+                "type": "보완", "element": missing_element,
+                "reason": f"중화 사주에서 비어 있는 {missing_element} 오행을 보완 후보로 본다",
+            })
     # 조후: 월지로 계절 한난 판정
     month_zhi = ec.getMonthZhi()
     WINTER = {"亥", "子", "丑"}
