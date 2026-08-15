@@ -545,6 +545,50 @@ def _validate_action_library(text: str, path: str) -> list[Violation]:
     return findings
 
 
+def _validate_windows_checkout_paths(repository_root: Path) -> list[Violation]:
+    """ChatGPT Windows 설치기가 안전하게 체크아웃할 수 있는 경로인지 검사한다."""
+
+    findings: list[Violation] = []
+    reserved_names = {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{number}" for number in range(1, 10)),
+        *(f"LPT{number}" for number in range(1, 10)),
+    }
+    invalid_characters = set('<>:"\\|?*')
+
+    for path in repository_root.rglob("*"):
+        relative = path.relative_to(repository_root)
+        if any(part in {".git", "__pycache__"} for part in relative.parts):
+            continue
+
+        unsafe = False
+        for component in relative.parts:
+            stem = component.rstrip(" .").split(".", 1)[0].upper()
+            if (
+                not component.isascii()
+                or component.endswith((" ", "."))
+                or stem in reserved_names
+                or any(ord(character) < 32 or character in invalid_characters for character in component)
+            ):
+                unsafe = True
+                break
+
+        if unsafe:
+            findings.append(
+                Violation(
+                    "WINDOWS_CHECKOUT_PATH",
+                    relative.as_posix(),
+                    "Windows용 ChatGPT 마켓플레이스가 체크아웃할 수 있도록 파일·폴더명은 "
+                    "이식 가능한 ASCII 경로를 사용해야 합니다.",
+                )
+            )
+
+    return findings
+
+
 def _validate_host_compatibility(skill_root: Path) -> list[Violation]:
     """Claude와 OpenAI 설치 메타데이터가 같은 스킬을 가리키는지 검사한다."""
 
@@ -568,6 +612,7 @@ def _validate_host_compatibility(skill_root: Path) -> list[Violation]:
             )
         ]
     repository_root = plugin_root.parent.parent
+    findings.extend(_validate_windows_checkout_paths(repository_root))
 
     claude_rel = "plugin/.claude-plugin/plugin.json"
     codex_rel = "plugin/.codex-plugin/plugin.json"
