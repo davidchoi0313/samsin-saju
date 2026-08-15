@@ -4,7 +4,7 @@
 
 - Plugin name: 삼신이 사주풀이
 - Developer: MEBRIC
-- Category: Lifestyle
+- Category: Entertainment
 - Short description: 만세력 계산을 쉬운 생활 조언과 오늘부터 해볼 실행 카드로 풀어드려요.
 - Long description: 생년 정보를 재현 가능한 만세력 엔진으로 계산한 뒤, 카드에 실제 있는 값만 전통 명리 관점의 참고 해석으로 설명합니다. 어려운 용어는 일·관계·생활의 구체적인 장면으로 바꾸고, 오늘 10분·이번 주 한 번·7일 뒤 확인 기준까지 제안합니다. 다정한 할머니 느낌은 은은하게 살리되 운명이나 중대한 결정을 단정하지 않습니다. 선택 입력인 성향 정보는 계산 근거가 아니라 행동을 실천하기 편한 방식에만 반영합니다. 전통 명리·무속 기반 오락·자기이해 참고용입니다.
 - Website: https://github.com/davidchoi0313/samsin-saju
@@ -12,6 +12,10 @@
 - Privacy: https://github.com/davidchoi0313/samsin-saju/blob/main/PRIVACY.md
 - Terms: https://github.com/davidchoi0313/samsin-saju/blob/main/TERMS.md
 - Countries: South Korea
+
+> 제출 포털의 실제 카테고리 목록에 Entertainment 가 없고 Lifestyle 만 있으면,
+> 그때는 반대로 Lifestyle 로 통일하고 `.agents/plugins/marketplace.json`·
+> `.codex-plugin/plugin.json`·`quality_contract.py` 의 Entertainment 검사를 함께 바꾼다.
 
 ## Starter prompts
 
