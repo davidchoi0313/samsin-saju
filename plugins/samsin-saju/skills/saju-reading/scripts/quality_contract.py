@@ -94,6 +94,19 @@ DISRESPECTFUL_TERMS = (
     "의원 찾아가렴",
 )
 
+# 설계 문서(SKILL/output-contract/action-library)의 어휘가 고객 문장에 그대로
+# 새어 나오면 풀이가 보고서 문체가 된다. 사람 말로 바꾸는 대응표는
+# reference/voice-and-exemplar.md §1에 있다.
+INTERNAL_JARGON_TERMS = (
+    "실행 장치",
+    "완료 기준",
+    "산출 카드",
+    "성향 카드",
+    "계산 관찰",
+    "행동 후보",
+    "관찰 지표",
+)
+
 
 @dataclass(frozen=True)
 class Violation:
@@ -1341,12 +1354,21 @@ def validate_customer_output(
                     "실행 카드가 빠졌습니다: " + ", ".join(missing),
                 )
             )
-        if not re.search(r"완료 기준|남으면 완료|하면 완료|기록하면 완료", body):
+        # "완료 기준"은 설계 문서 어휘라 INTERNAL_JARGON_TERMS로 막는다.
+        # 대신 고객이 읽는 사람 말 형태를 허용한다.
+        if not re.search(
+            r"남으면 완료|하면 완료|되면 완료"
+            r"|(?:하|되|졌|었)으?면\s*(?:그날은|오늘은|그 주는|이번 주는)?\s*된 거"
+            r"|(?:그날은|오늘은|그 주는|이번 주는)\s*된 거"
+            r"|까지 하면 충분해|하면 충분해",
+            body,
+        ):
             findings.append(
                 Violation(
                     "OUTPUT_COMPLETION_CRITERION",
                     path,
-                    "실행 카드에 고객이 끝냈는지 알 수 있는 완료 기준이 필요합니다.",
+                    "실행 카드에 고객이 끝냈는지 알 수 있는 신호가 필요합니다"
+                    "(예: '메모 세 줄이 남으면 완료야', '줄이 하나 그어졌으면 오늘은 된 거야').",
                 )
             )
         if not all(marker in body for marker in ("유지", "수정", "중단")):
@@ -1453,14 +1475,20 @@ def validate_customer_output(
             )
         )
 
-    baby_count = body.count("아가")
-    if baby_count > 1 or (baby_count == 1 and body.find("아가") > 160):
+    # 호칭으로 쓰인 '아가'만 센다. 부분문자열로 세면 돌아가·나아가·살아가 같은
+    # 일상 동사가 그대로 걸린다.
+    # 앞 글자가 한글이면 돌아가·나아가·살아가처럼 동사의 꼬리다.
+    # 뒤쪽은 조사가 붙을 수 있어 열어둔다(아가야·아가는·아가라고).
+    address_pattern = r"(?<![가-힣])아가(?!씨)"
+    baby_matches = list(re.finditer(address_pattern, body))
+    baby_count = len(baby_matches)
+    if baby_count > 1 or (baby_count == 1 and baby_matches[0].start() > 160):
         findings.append(
             Violation(
                 "OUTPUT_ADDRESS_OVERUSE",
                 path,
                 "'아가'는 첫 인사에서만 최대 1회 쓸 수 있습니다.",
-                _line_of(body, "아가"),
+                body.count("\n", 0, baby_matches[0].start()) + 1,
             )
         )
 
@@ -1491,6 +1519,19 @@ def validate_customer_output(
                 path,
                 f"과한 고어 어미는 사용하지 않습니다: {archaic.group(0)}",
                 _line_of(body, archaic.group(0)),
+            )
+        )
+
+    leaked_jargon = [term for term in INTERNAL_JARGON_TERMS if term in body]
+    if leaked_jargon:
+        findings.append(
+            Violation(
+                "OUTPUT_INTERNAL_JARGON",
+                path,
+                "설계 문서 용어가 고객 문장에 남았습니다: "
+                + ", ".join(leaked_jargon)
+                + ". reference/voice-and-exemplar.md §1의 사람 말로 바꿔주세요.",
+                _line_of(body, leaked_jargon[0]),
             )
         )
 

@@ -251,7 +251,9 @@ class TestPromptRegressionDetection(PromptContractTestCase):
     def test_action_library_keeps_use_caution_and_check_types(self):
         self.rewrite(
             "reference/action-library.md",
-            lambda text: text.replace("확인 지표", "느낌", 1),
+            # 장면 은행으로 확장되며 라벨이 오행마다 반복된다.
+            # 범주가 통째로 사라지는 상황을 재현하려면 전량 치환해야 한다.
+            lambda text: text.replace("확인 지표", "느낌"),
         )
         self.assertIn("ACTION_LIBRARY_ACTION_TYPES", finding_codes(self.validate()))
 
@@ -359,6 +361,58 @@ class TestCustomerOutputContract(unittest.TestCase):
         self.assertIn("OUTPUT_AWKWARD_KOREAN", codes)
         self.assertIn("OUTPUT_RAW_FIELD_LEAK", codes)
         self.assertIn("OUTPUT_PERSONALITY_CODE_LEAK", codes)
+
+    def test_everyday_verbs_are_not_counted_as_the_baby_address(self):
+        output = f"""사람 사이에 네가 끼면 말이 돌아가. 한 걸음 나아가 보자. 그렇게 살아가는 결이구나. 방에 들어가 앉으면 정리가 돼.
+
+오늘 10분 기록하고 이번 주 실험 뒤 7일 뒤 유지·수정·중단을 정하렴. 기록이 남으면 완료야.
+
+{quality_contract.COMMON_DISCLAIMER}"""
+        codes = finding_codes(quality_contract.validate_customer_output(output, 1))
+        self.assertNotIn("OUTPUT_ADDRESS_OVERUSE", codes)
+
+    def test_repeated_baby_address_is_still_blocked(self):
+        output = f"""아가, 어서 오렴. 그래 아가, 오늘 사주를 보자꾸나.
+
+오늘 10분 기록하고 이번 주 실험 뒤 7일 뒤 유지·수정·중단을 정해. 기록이 남으면 완료야.
+
+{quality_contract.COMMON_DISCLAIMER}"""
+        codes = finding_codes(quality_contract.validate_customer_output(output, 1))
+        self.assertIn("OUTPUT_ADDRESS_OVERUSE", codes)
+
+    def test_internal_design_jargon_is_blocked(self):
+        output = f"""계산 관찰을 보면 나무 기운이 여섯이야. 행동 후보를 실행 장치로 옮겨보자.
+
+오늘 10분 기록하고 이번 주 실험 뒤 7일 뒤 유지·수정·중단을 정하렴. 기록이 남으면 완료란다.
+
+{quality_contract.COMMON_DISCLAIMER}"""
+        findings = quality_contract.validate_customer_output(output, 1)
+        self.assertIn("OUTPUT_INTERNAL_JARGON", finding_codes(findings))
+        message = next(
+            item.message for item in findings if item.code == "OUTPUT_INTERNAL_JARGON"
+        )
+        for term in ("계산 관찰", "행동 후보", "실행 장치"):
+            self.assertIn(term, message)
+
+    def test_completion_signal_may_use_plain_korean(self):
+        output = f"""네 사주엔 나무 기운이 여섯이라 벌인 일이 늘 능력보다 많아지기 쉽구나.
+
+오늘 저녁 10분, 하고 있는 일을 한 장에 적고 하나를 골라 내려놓아 보렴. 종이에 줄이 하나 그어졌으면 오늘은 된 거야. 이번 주 실험으로 새 부탁에 "내일 알려줄게"를 한 번 해봐. 7일 뒤 일 개수만 보고 유지·수정·중단을 고르면 된단다.
+
+{quality_contract.COMMON_DISCLAIMER}"""
+        codes = finding_codes(quality_contract.validate_customer_output(output, 1))
+        self.assertNotIn("OUTPUT_COMPLETION_CRITERION", codes)
+        self.assertNotIn("OUTPUT_INTERNAL_JARGON", codes)
+
+    def test_completion_criterion_phrase_itself_is_jargon(self):
+        output = f"""오늘 10분 기록하고 이번 주 실험 뒤 7일 뒤 유지·수정·중단을 정하렴.
+
+각 행동의 완료 기준은 메모 세 줄이란다.
+
+{quality_contract.COMMON_DISCLAIMER}"""
+        codes = finding_codes(quality_contract.validate_customer_output(output, 1))
+        self.assertIn("OUTPUT_INTERNAL_JARGON", codes)
+        self.assertIn("OUTPUT_COMPLETION_CRITERION", codes)
 
     def test_untranslated_hanja_is_blocked_but_parenthetical_hanja_is_allowed(self):
         bad = f"""일주는 丙午라 불기운이 도드라져요.

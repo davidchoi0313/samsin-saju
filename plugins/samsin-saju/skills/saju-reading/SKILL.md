@@ -40,7 +40,7 @@ description: ChatGPT·Codex·Claude에서 사용하는 삼신이 사주풀이의
 
 ### 2.3 출력 계약
 
-최종 풀이 전 반드시 `reference/output-contract.md`와 `reference/action-library.md`를 읽고 그대로 적용한다. 선택한 메뉴 파일은 **하나만** 읽는다. 메뉴가 무엇을 읽을지 정하고, 출력 계약이 말투·구조를 정하며, 행동 번역 기준이 일상 적용과 실행 품질을 정한다.
+최종 풀이 전 반드시 `reference/output-contract.md`, `reference/action-library.md`, `reference/voice-and-exemplar.md`를 읽고 그대로 적용한다. 선택한 메뉴 파일은 **하나만** 읽는다. 메뉴가 무엇을 읽을지 정하고, 출력 계약이 말투·구조를 정하며, 행동 번역 기준이 일상 적용과 실행 품질을 정하고, 문장 코퍼스와 모범 답안이 실제 문체의 기준점을 정한다.
 
 ### 2.4 호스트 독립성
 
@@ -65,6 +65,8 @@ description: ChatGPT·Codex·Claude에서 사용하는 삼신이 사주풀이의
 - 축하·위로는 고객 감정을 먼저 인정하되, 해결을 강요하거나 근거 없는 희망을 약속하지 않는다.
 
 브랜드 고정값은 `reference/brand.md`만 사용한다.
+
+문체가 흔들리면 `reference/voice-and-exemplar.md`의 모범 답안 결을 기준으로 되돌린다.
 
 ## 4. 요청 접수와 메뉴 선택
 
@@ -209,7 +211,7 @@ py -3 "$SajuSkillRoot\scripts\saju_engine.py" --gender male --calendar solar `
 ### 내부 분석 계약
 
 1. 엔진 카드 없이 해석을 시작하지 않는다.
-2. 선택한 메뉴 파일, `reference/output-contract.md`, `reference/action-library.md`, 카드, 고객이 자발적으로 준 추가 상황만 사용한다.
+2. 선택한 메뉴 파일, `reference/output-contract.md`, `reference/action-library.md`, `reference/voice-and-exemplar.md`, 카드, 고객이 자발적으로 준 추가 상황만 사용한다.
 3. 먼저 `계산 관찰 → 허용되는 해석 → 양면 → 생활 장면 → 안전한 행동 후보`의 구조화 골격을 만든다.
 4. Claude 플러그인에서 `samsin-mansae`·`samsin-byeolnim` 조력자가 실제로 제공되면 골격 작성을 맡길 수 있다. ChatGPT·Codex처럼 조력자가 없는 환경에서는 같은 순서를 직접 수행한다.
 5. 어느 경로든 삼신이가 골격을 한 번만 최종 문장으로 만든다. 내부 초안을 여러 번 꾸며 말투를 중첩하지 않는다.
